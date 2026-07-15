@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Profile — Emotion Chatbot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 0;
+        }
+
+        /* ── Floating bubbles (same as login) ── */
+        .bg-bubbles { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+        .bubble {
+            position: absolute; border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            animation: floatUp linear infinite;
+        }
+        .bubble:nth-child(1) { width:60px;  height:60px;  left:10%; animation-duration:12s; animation-delay:0s; }
+        .bubble:nth-child(2) { width:30px;  height:30px;  left:25%; animation-duration:9s;  animation-delay:2s; }
+        .bubble:nth-child(3) { width:80px;  height:80px;  left:40%; animation-duration:14s; animation-delay:1s; }
+        .bubble:nth-child(4) { width:20px;  height:20px;  left:60%; animation-duration:8s;  animation-delay:3s; }
+        .bubble:nth-child(5) { width:50px;  height:50px;  left:75%; animation-duration:11s; animation-delay:0.5s; }
+        .bubble:nth-child(6) { width:35px;  height:35px;  left:88%; animation-duration:10s; animation-delay:4s; }
+        @keyframes floatUp {
+            0%   { transform: translateY(110vh) scale(0.8); opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1.1); opacity: 0; }
+        }
+
+        /* ── Card ── */
+        .card {
+            position: relative; z-index: 1;
+            background: white; border-radius: 24px;
+            padding: 36px 36px 30px; width: 460px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Back button ── */
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 13px; color: #888; text-decoration: none;
+            margin-bottom: 20px; transition: color 0.2s;
+            background: none; border: none; cursor: pointer; padding: 0;
+        }
+        .back-btn:hover { color: #667eea; }
+
+        /* ── Avatar section ── */
+        .avatar-section {
+            display: flex; flex-direction: column; align-items: center;
+            margin-bottom: 28px;
+        }
+        .avatar-wrap {
+            position: relative; width: 96px; height: 96px; margin-bottom: 12px;
+        }
+        .avatar-img {
+            width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
+            border: 4px solid #667eea;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.35);
+        }
+        .avatar-placeholder {
+            width: 96px; height: 96px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 38px; border: 4px solid #667eea;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.35);
+        }
+        .avatar-edit-btn {
+            position: absolute; bottom: 2px; right: 2px;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #667eea; color: white;
+            border: 2px solid white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; transition: background 0.2s;
+        }
+        .avatar-edit-btn:hover { background: #764ba2; }
+        #avatarInput { display: none; }
+
+        .profile-name { font-size: 20px; font-weight: 700; color: #1a1a2e; }
+        .profile-joined { font-size: 12px; color: #aaa; margin-top: 3px; }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex; border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 22px; gap: 0;
+        }
+        .tab {
+            flex: 1; padding: 10px 0;
+            text-align: center; font-size: 13px; font-weight: 600;
+            color: #bbb; cursor: pointer; border-bottom: 2px solid transparent;
+            margin-bottom: -2px; transition: all 0.2s;
+        }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab:hover:not(.active) { color: #888; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Form ── */
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 7px; }
+        .input-wrap { position: relative; }
+        .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #bbb; pointer-events: none; }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%; padding: 12px 14px 12px 42px;
+            border: 2px solid #e8e8e8; border-radius: 12px;
+            font-size: 14px; color: #333; outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fafafa;
+        }
+        input:focus { border-color: #667eea; background: white; box-shadow: 0 0 0 4px rgba(102,126,234,0.12); }
+        input.valid   { border-color: #27ae60; }
+        input.invalid { border-color: #e74c3c; }
+        input[readonly] { background: #f5f5f5; color: #aaa; cursor: not-allowed; }
+
+        /* Hide native pw reveal */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear { display: none !important; }
+        input[type="password"]::-webkit-credentials-auto-fill-button { display: none !important; }
+
+        .pw-toggle {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #bbb; cursor: pointer; font-size: 16px; padding: 0;
+        }
+        .pw-toggle:hover { color: #667eea; }
+
+        .field-hint { font-size: 12px; color: #aaa; margin-top: 5px; }
+        .field-hint.ok  { color: #27ae60; }
+        .field-hint.err { color: #e74c3c; }
+
+        /* ── Buttons ── */
+        .btn-save {
+            width: 100%; padding: 13px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 12px;
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: opacity 0.2s, transform 0.15s; margin-top: 4px;
+        }
+        .btn-save:hover    { opacity: 0.9; transform: translateY(-1px); }
+        .btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* ── Message box ── */
+        .msg-box {
+            display: none; padding: 11px 14px;
+            border-radius: 10px; font-size: 13px;
+            margin-top: 14px; font-weight: 500;
+        }
+        .msg-box.error   { background: #fff0f0; color: #c0392b; border: 1px solid #fac7c7; }
+        .msg-box.success { background: #f0fff4; color: #27ae60; border: 1px solid #b7f0c8; }
+
+        /* ── Stats section ── */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(3,1fr);
+            gap: 12px; margin-bottom: 6px;
+        }
+        .stat-box {
+            background: #f8f8ff; border: 1px solid #e8e8ff;
+            border-radius: 14px; padding: 16px 8px; text-align: center;
+        }
+        .stat-num   { font-size: 26px; font-weight: 700; color: #667eea; }
+        .stat-label { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+        /* Danger zone */
+        .danger-zone {
+            border: 1px solid #fac7c7; border-radius: 14px;
+            padding: 18px; margin-top: 6px;
+        }
+        .danger-zone h4 { color: #c0392b; font-size: 14px; margin-bottom: 8px; }
+        .danger-zone p  { font-size: 12px; color: #888; margin-bottom: 14px; line-height: 1.6; }
+        .btn-danger {
+            width: 100%; padding: 11px;
+            background: white; color: #c0392b;
+            border: 2px solid #fac7c7; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-danger:hover { background: #fff0f0; }
+
+        /* Spinner */
+        .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="bg-bubbles">
+    <div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div>
+</div>
+
+<div class="card">
+
+    <!-- Back -->
+    <button class="back-btn" onclick="window.location.href='/'">← Back to Chat</button>
+
+    <!-- Avatar -->
+    <div class="avatar-section">
+        <div class="avatar-wrap">
+            <div class="avatar-placeholder" id="avatarPlaceholder">🤖</div>
+            <img class="avatar-img" id="avatarImg" src="" alt="Profile" style="display:none;" />
+            <button class="avatar-edit-btn" onclick="document.getElementById('avatarInput').click()" title="Change photo">✏️</button>
+            <input type="file" id="avatarInput" accept="image/*" onchange="previewAvatar(event)" />
+        </div>
+        <div class="profile-name" id="displayName">Loading...</div>
+        <div class="profile-joined" id="displayJoined"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('info')">👤 Info</div>
+        <div class="tab"        onclick="switchTab('password')">🔒 Password</div>
+        <div class="tab"        onclick="switchTab('stats')">📊 Stats</div>
+    </div>
+
+    <!-- ── TAB: Info ── -->
+    <div class="tab-panel active" id="tab-info">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <div class="input-wrap">
+                <span class="input-icon">👤</span>
+                <input type="text" id="username" placeholder="Username" oninput="validateUsername()" />
+            </div>
+            <div class="field-hint" id="username-hint"></div>
+        </div>
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-wrap">
+                <span class="input-icon">✉️</span>
+                <input type="email" id="email" placeholder="you@example.com" oninput="validateEmail()" />
+            </div>
+            <div class="field-hint" id="email-hint"></div>
+        </div>
+        <button class="btn-save" onclick="saveInfo()" id="saveInfoBtn">Save Changes</button>
+        <div class="msg-box" id="infoMsg"></div>
+    </div>
+
+    <!-- ── TAB: Password ── -->
+    <div class="tab-panel" id="tab-password">
+        <div class="form-group">
+            <label for="currentPw">Current Password</label>
+            <div class="input-wrap">
+                <span class="input-icon">🔑</span>
+                <input type="password" id="currentPw" placeholder="Enter current password" />
+                <button class="pw-toggle" onclick="togglePw('currentPw','eye1')" id="eye1">👁️</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="newPw">New Password</label>
+            <div class="input-wrap">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="newPw" placeholder="At least 6 characters" oninput="checkNewPw()" />
+                <button class="pw-toggle" onclick="togglePw('newPw','eye2')" id="eye2">👁️</button>
+            </div>
+            <div class="field-hint" id="newpw-hint"></div>
+        </div>
+        <div class="form-group">
+            <label for="confirmPw">Confirm New Password</label>
+            <div class="input-wrap">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="confirmPw" placeholder="Repeat new password" oninput="checkConfirmPw()" />
+                <button class="pw-toggle" onclick="togglePw('confirmPw','eye3')" id="eye3">👁️</button>
+            </div>
+            <div class="field-hint" id="confirmpw-hint"></div>
+        </div>
+        <button class="btn-save" onclick="savePassword()" id="savePwBtn">Update Password</button>
+        <div class="msg-box" id="pwMsg"></div>
+    </div>
+
+    <!-- ── TAB: Stats ── -->
+    <div class="tab-panel" id="tab-stats">
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-box"><div class="stat-num" id="statSessions">—</div><div class="stat-label">Sessions</div></div>
+            <div class="stat-box"><div class="stat-num" id="statMessages">—</div><div class="stat-label">Messages</div></div>
+            <div class="stat-box"><div class="stat-num" id="statPositive">—</div><div class="stat-label">Positive %</div></div>
+        </div>
+        <div class="stat-box" style="margin-bottom:18px; margin-top:12px;">
+            <div style="font-size:13px; color:#888; margin-bottom:6px;">Most Common Emotion</div>
+            <div id="statEmotion" style="font-size:22px; font-weight:700; color:#667eea;">—</div>
+        </div>
+
+        <div class="danger-zone">
+            <h4>⚠️ Danger Zone</h4>
+            <p>Deleting your account is permanent. All your chat history, sessions, and data will be removed and cannot be recovered.</p>
+            <button class="btn-danger" onclick="confirmDelete()">🗑️ Delete My Account</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ── Load profile on page load ─────────────────────────────────────
+    window.addEventListener('load', () => {
+        loadProfile();
+        loadStats();
+    });
+
+    async function loadProfile() {
+        try {
+            const res  = await fetch('/profile/get');
+            const data = await res.json();
+            document.getElementById('displayName').textContent   = data.username || '—';
+            document.getElementById('displayJoined').textContent = data.created_at ? `Joined ${data.created_at}` : '';
+            document.getElementById('username').value = data.username || '';
+            document.getElementById('email').value    = data.email    || '';
+            if (data.profile_picture) {
+                showAvatarImg(data.profile_picture);
+            }
+        } catch (e) {
+            console.error('Failed to load profile', e);
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const res  = await fetch('/profile/stats');
+            const data = await res.json();
+            document.getElementById('statSessions').textContent = data.sessions  ?? '—';
+            document.getElementById('statMessages').textContent = data.messages  ?? '—';
+            document.getElementById('statPositive').textContent = data.positive_pct != null ? data.positive_pct + '%' : '—';
+            document.getElementById('statEmotion').textContent  = data.top_emotion ? (emojiFor(data.top_emotion) + ' ' + cap(data.top_emotion)) : '—';
+        } catch (e) {
+            console.error('Failed to load stats', e);
+        }
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────
+    function switchTab(name) {
+        document.querySelectorAll('.tab').forEach((t, i) => {
+            const names = ['info','password','stats'];
+            t.classList.toggle('active', names[i] === name);
+        });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(`tab-${name}`).classList.add('active');
+    }
+
+    // ── Avatar preview ────────────────────────────────────────────────
+    function previewAvatar(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            showAvatarImg(ev.target.result);
+            uploadAvatar(file);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showAvatarImg(src) {
+        document.getElementById('avatarPlaceholder').style.display = 'none';
+        const img = document.getElementById('avatarImg');
+        img.src = src; img.style.display = 'block';
+    }
+
+    async function uploadAvatar(file) {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        try {
+            await fetch('/profile/upload-avatar', { method: 'POST', body: formData });
+        } catch (e) {
+            console.error('Avatar upload failed', e);
+        }
+    }
+
+    // ── Info validation ───────────────────────────────────────────────
+    function validateUsername() {
+        const val  = document.getElementById('username').value.trim();
+        const inp  = document.getElementById('username');
+        const hint = document.getElementById('username-hint');
+        const ok   = /^[a-zA-Z0-9_]{3,30}$/.test(val);
+        inp.className    = val ? (ok ? 'valid' : 'invalid') : '';
+        hint.className   = 'field-hint' + (val ? (ok ? ' ok' : ' err') : '');
+        hint.textContent = val ? (ok ? '✓ Looks good!' : '3–30 chars, letters/numbers/underscore only') : '';
+        return ok;
+    }
+
+    function validateEmail() {
+        const val  = document.getElementById('email').value.trim();
+        const inp  = document.getElementById('email');
+        const hint = document.getElementById('email-hint');
+        const ok   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+        inp.className    = val ? (ok ? 'valid' : 'invalid') : '';
+        hint.className   = 'field-hint' + (val ? (ok ? ' ok' : ' err') : '');
+        hint.textContent = val ? (ok ? '✓ Valid email' : 'Please enter a valid email') : '';
+        return ok;
+    }
+
+    // ── Save info ─────────────────────────────────────────────────────
+    async function saveInfo() {
+        if (!validateUsername() || !validateEmail()) return;
+        const btn = document.getElementById('saveInfoBtn');
+        btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> Saving…`;
+        try {
+            const res  = await fetch('/profile/update-info', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('username').value.trim(),
+                    email:    document.getElementById('email').value.trim()
+                })
+            });
+            const data = await res.json();
+            showMsg('infoMsg', data.message || (data.success ? 'Saved!' : 'Error'), data.success ? 'success' : 'error');
+            if (data.success) {
+                document.getElementById('displayName').textContent = document.getElementById('username').value.trim();
+            }
+        } catch (e) {
+            showMsg('infoMsg', 'Connection error.', 'error');
+        }
+        btn.disabled = false; btn.innerHTML = 'Save Changes';
+    }
+
+    // ── Password validation ───────────────────────────────────────────
+    function checkNewPw() {
+        const val  = document.getElementById('newPw').value;
+        const hint = document.getElementById('newpw-hint');
+        const ok   = val.length >= 6;
+        hint.className   = 'field-hint' + (val ? (ok ? ' ok' : ' err') : '');
+        hint.textContent = val ? (ok ? '✓ Strong enough' : 'Minimum 6 characters') : '';
+        checkConfirmPw();
+        return ok;
+    }
+
+    function checkConfirmPw() {
+        const pw   = document.getElementById('newPw').value;
+        const conf = document.getElementById('confirmPw').value;
+        const hint = document.getElementById('confirmpw-hint');
+        if (!conf) { hint.textContent = ''; return false; }
+        const ok = pw === conf;
+        hint.className   = 'field-hint' + (ok ? ' ok' : ' err');
+        hint.textContent = ok ? '✓ Passwords match!' : 'Passwords do not match';
+        return ok;
+    }
+
+    // ── Save password ─────────────────────────────────────────────────
+    async function savePassword() {
+        const current = document.getElementById('currentPw').value;
+        if (!current)         { showMsg('pwMsg', 'Enter your current password.', 'error'); return; }
+        if (!checkNewPw())    { showMsg('pwMsg', 'New password must be at least 6 characters.', 'error'); return; }
+        if (!checkConfirmPw()){ showMsg('pwMsg', 'Passwords do not match.', 'error'); return; }
+
+        const btn = document.getElementById('savePwBtn');
+        btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> Updating…`;
+        try {
+            const res  = await fetch('/profile/update-password', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    current_password: current,
+                    new_password:     document.getElementById('newPw').value
+                })
+            });
+            const data = await res.json();
+            showMsg('pwMsg', data.message || (data.success ? 'Password updated!' : 'Error'), data.success ? 'success' : 'error');
+            if (data.success) {
+                document.getElementById('currentPw').value = '';
+                document.getElementById('newPw').value     = '';
+                document.getElementById('confirmPw').value = '';
+            }
+        } catch (e) {
+            showMsg('pwMsg', 'Connection error.', 'error');
+        }
+        btn.disabled = false; btn.innerHTML = 'Update Password';
+    }
+
+    // ── Delete account ────────────────────────────────────────────────
+    function confirmDelete() {
+        if (!confirm('Are you sure? This will permanently delete your account and ALL your chat data. This cannot be undone.')) return;
+        fetch('/profile/delete-account', { method: 'POST' })
+            .then(r => r.json())
+            .then(d => { if (d.success) window.location.href = '/login'; })
+            .catch(() => alert('Error deleting account.'));
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────
+    function togglePw(id, btnId) {
+        const input = document.getElementById(id);
+        const btn   = document.getElementById(btnId);
+        const hide  = input.type === 'password';
+        input.type      = hide ? 'text' : 'password';
+        btn.textContent = hide ? '🙈' : '👁️';
+    }
+
+    function showMsg(id, text, type) {
+        const box = document.getElementById(id);
+        box.textContent = text; box.className = `msg-box ${type}`; box.style.display = 'block';
+        setTimeout(() => { box.style.display = 'none'; }, 4000);
+    }
+
+    function cap(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
+
+    function emojiFor(emotion) {
+        const map = { happy:'😊', sad:'😔', angry:'😠', surprised:'😲', fearful:'😰', disgusted:'😣', neutral:'😐' };
+        return map[emotion] || '🤖';
+    }
+</script>
+</body>
+</html>

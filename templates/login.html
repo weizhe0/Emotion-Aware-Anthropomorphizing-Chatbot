@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Login — Emotion Chatbot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Floating bubbles background */
+        .bg-bubbles {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            animation: floatUp linear infinite;
+        }
+        .bubble:nth-child(1)  { width:60px;  height:60px;  left:10%;  animation-duration:12s; animation-delay:0s; }
+        .bubble:nth-child(2)  { width:30px;  height:30px;  left:25%;  animation-duration:9s;  animation-delay:2s; }
+        .bubble:nth-child(3)  { width:80px;  height:80px;  left:40%;  animation-duration:14s; animation-delay:1s; }
+        .bubble:nth-child(4)  { width:20px;  height:20px;  left:60%;  animation-duration:8s;  animation-delay:3s; }
+        .bubble:nth-child(5)  { width:50px;  height:50px;  left:75%;  animation-duration:11s; animation-delay:0.5s; }
+        .bubble:nth-child(6)  { width:35px;  height:35px;  left:88%;  animation-duration:10s; animation-delay:4s; }
+        @keyframes floatUp {
+            0%   { transform: translateY(110vh) scale(0.8); opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1.1); opacity: 0; }
+        }
+
+        /* Card */
+        .card {
+            position: relative;
+            z-index: 1;
+            background: white;
+            border-radius: 24px;
+            padding: 44px 40px 36px;
+            width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Bot avatar */
+        .bot-icon {
+            width: 72px; height: 72px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 34px;
+            margin: 0 auto 20px;
+            box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 18px; }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 7px;
+            letter-spacing: 0.3px;
+        }
+
+        .input-wrap {
+            position: relative;
+        }
+        .input-icon {
+            position: absolute;
+            left: 14px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: #bbb;
+            pointer-events: none;
+        }
+        input[type="email"],
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            padding: 13px 42px 13px 42px; /* FIX: right padding makes room for toggle button */
+            border: 2px solid #e8e8e8;
+            border-radius: 12px;
+            font-size: 15px;
+            color: #333;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fafafa;
+        }
+        input:focus {
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102,126,234,0.12);
+        }
+
+        /* FIX: Hide native browser password reveal icons (Edge, Chrome, IE) */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none !important;
+        }
+        input[type="password"]::-webkit-contacts-auto-fill-button,
+        input[type="password"]::-webkit-credentials-auto-fill-button {
+            display: none !important;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 14px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none;
+            color: #bbb; cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+        }
+        .password-toggle:hover { color: #667eea; }
+
+        /* Login button */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s, transform 0.15s;
+            letter-spacing: 0.3px;
+        }
+        .btn-login:hover    { opacity: 0.92; transform: translateY(-1px); }
+        .btn-login:active   { transform: translateY(0); }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Message box */
+        .msg-box {
+            display: none;
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-top: 14px;
+            font-weight: 500;
+        }
+        .msg-box.error   { background: #fff0f0; color: #c0392b; border: 1px solid #fac7c7; }
+        .msg-box.success { background: #f0fff4; color: #27ae60; border: 1px solid #b7f0c8; }
+
+        /* Divider */
+        .divider {
+            text-align: center;
+            color: #ccc;
+            font-size: 13px;
+            margin: 22px 0 18px;
+            position: relative;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            position: absolute;
+            top: 50%; width: 38%;
+            height: 1px;
+            background: #eee;
+        }
+        .divider::before { left: 0; }
+        .divider::after  { right: 0; }
+
+        /* Register link */
+        .register-link {
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+        }
+        .register-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .register-link a:hover { text-decoration: underline; }
+
+        /* Loading spinner inside button */
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- Background bubbles -->
+<div class="bg-bubbles">
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+</div>
+
+<!-- Login Card -->
+<div class="card">
+
+    <div class="bot-icon">🤖</div>
+    <h1>Welcome Back</h1>
+    <p class="subtitle">Sign in to your Emotion Chatbot</p>
+
+    <!-- Email -->
+    <div class="form-group">
+        <label for="email">Email Address</label>
+        <div class="input-wrap">
+            <span class="input-icon">✉️</span>
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+    </div>
+
+    <!-- Password -->
+    <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" />
+            <button class="password-toggle" onclick="togglePassword()" type="button" id="eyeBtn" title="Show/hide password">👁️</button>
+        </div>
+    </div>
+
+    <button class="btn-login" onclick="doLogin()" id="loginBtn">Sign In</button>
+
+    <div class="msg-box" id="msgBox"></div>
+
+    <div class="divider">or</div>
+
+    <div class="register-link">
+        Don't have an account? <a href="/register">Create one</a>
+    </div>
+
+</div>
+
+<script>
+    // Allow Enter key to submit
+    document.addEventListener("keypress", function(e) {
+        if (e.key === "Enter") doLogin();
+    });
+
+    function togglePassword() {
+        const input  = document.getElementById("password");
+        const btn    = document.getElementById("eyeBtn");
+        const isHide = input.type === "password";
+        input.type   = isHide ? "text" : "password";
+        btn.textContent = isHide ? "🙈" : "👁️";
+    }
+
+    function showMsg(text, type) {
+        const box       = document.getElementById("msgBox");
+        box.textContent = text;
+        box.className   = `msg-box ${type}`;
+        box.style.display = "block";
+    }
+
+    async function doLogin() {
+        const email    = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        const btn      = document.getElementById("loginBtn");
+
+        if (!email || !password) {
+            showMsg("Please fill in all fields.", "error");
+            return;
+        }
+
+        // Loading state
+        btn.disabled    = true;
+        btn.innerHTML   = `<span class="spinner"></span> Signing in...`;
+
+        try {
+            const res  = await fetch("/login", {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showMsg(`Welcome back, ${data.username}! 😊 Redirecting...`, "success");
+                setTimeout(() => window.location.href = "/", 900);
+            } else {
+                showMsg(data.message || "Invalid email or password.", "error");
+                btn.disabled  = false;
+                btn.innerHTML = "Sign In";
+            }
+        } catch (err) {
+            showMsg("Connection error. Please try again.", "error");
+            btn.disabled  = false;
+            btn.innerHTML = "Sign In";
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Emotion-Aware Chatbot</title>
+    <style>
+        /* ── RESET ── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* ════════════════════════════════════
+           FLOATING BUBBLES BACKGROUND
+        ════════════════════════════════════ */
+        .bg-bubbles {
+            position: fixed; inset: 0;
+            overflow: hidden; z-index: 0; pointer-events: none;
+        }
+        .bubble {
+            position: absolute; border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            animation: floatUp linear infinite;
+        }
+        .bubble:nth-child(1)  { width:60px;  height:60px;  left:5%;  animation-duration:12s; animation-delay:0s;   }
+        .bubble:nth-child(2)  { width:25px;  height:25px;  left:15%; animation-duration:9s;  animation-delay:2s;   }
+        .bubble:nth-child(3)  { width:70px;  height:70px;  left:28%; animation-duration:14s; animation-delay:1s;   }
+        .bubble:nth-child(4)  { width:18px;  height:18px;  left:45%; animation-duration:8s;  animation-delay:3.5s; }
+        .bubble:nth-child(5)  { width:45px;  height:45px;  left:58%; animation-duration:11s; animation-delay:0.5s; }
+        .bubble:nth-child(6)  { width:30px;  height:30px;  left:72%; animation-duration:10s; animation-delay:4s;   }
+        .bubble:nth-child(7)  { width:55px;  height:55px;  left:85%; animation-duration:13s; animation-delay:1.5s; }
+        .bubble:nth-child(8)  { width:20px;  height:20px;  left:92%; animation-duration:7s;  animation-delay:2.5s; }
+        @keyframes floatUp {
+            0%   { transform: translateY(110vh) scale(0.8); opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1.1); opacity: 0; }
+        }
+
+        /* ════════════════════════════════════
+           SIDEBAR
+        ════════════════════════════════════ */
+        #sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: 300px;
+            height: 100vh;
+            background: #1e1e2e;
+            color: #fff;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.4);
+        }
+        #sidebar.open { transform: translateX(0); }
+
+        .sidebar-header {
+            padding: 20px 16px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-header h3 { font-size: 16px; margin-bottom: 10px; color: #ccc; }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            transition: background 0.2s;
+        }
+        .new-chat-btn:hover { background: #5567d5; }
+
+        .weekly-btn {
+            width: 100%;
+            padding: 9px;
+            background: rgba(255,255,255,0.1);
+            color: #ddd;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .weekly-btn:hover { background: rgba(255,255,255,0.18); }
+
+        .sidebar-close {
+            position: absolute;
+            top: 14px; right: 14px;
+            background: transparent;
+            border: none;
+            color: #aaa;
+            font-size: 22px;
+            cursor: pointer;
+        }
+        .sidebar-close:hover { color: #fff; }
+
+        #sessionList {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 10px 20px;
+        }
+        #sessionList::-webkit-scrollbar { width: 4px; }
+        #sessionList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+        .session-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 6px;
+            transition: background 0.15s;
+            border: 1px solid transparent;
+        }
+        .session-item:hover { background: rgba(255,255,255,0.08); }
+        .session-item.active {
+            background: rgba(102,126,234,0.25);
+            border-color: rgba(102,126,234,0.5);
+        }
+        .session-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e0e0ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .session-preview {
+            font-size: 11px;
+            color: #888;
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .session-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 5px;
+            font-size: 10px;
+            color: #666;
+        }
+        .session-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
+        .session-item:hover .session-actions { opacity: 1; }
+        .action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .action-btn:hover { background: rgba(255,255,255,0.1); }
+        .session-empty {
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+            margin-top: 30px;
+            line-height: 2;
+        }
+
+        #sidebarOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1999;
+        }
+        #sidebar.open ~ #sidebarOverlay { display: block; }
+
+        /* ════════════════════════════════════
+           MAIN CHAT LAYOUT
+        ════════════════════════════════════ */
+        .chat-container {
+            width: 460px;
+            height: 680px;
+            background: white;
+            border-radius: 22px;
+            box-shadow: 0 12px 50px rgba(0,0,0,0.35);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        /* ── Header ── */
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 16px 12px;
+        }
+        .header-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .menu-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 34px; height: 34px;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .menu-btn:hover { background: rgba(255,255,255,0.3); }
+
+        .header-center { flex: 1; text-align: center; }
+        .avatar { font-size: 44px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+        .emotion-label { font-size: 14px; font-weight: bold; margin-top: 2px; }
+
+        .header-bottom {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .emotion-status {
+            font-size: 11px;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+        }
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.2s;
+        }
+        .header-btn:hover { background: rgba(255,255,255,0.35); }
+
+        /* ── User badge (clickable, top-right) ── */
+        .user-badge {
+            font-size: 11px;
+            color: rgba(255,255,255,0.9);
+            text-align: right;
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            padding: 5px 12px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background 0.2s, transform 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .user-badge:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        /* ── Chat Box ── */
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 16px 10px;
+            background: #f4f4fb;
+            scroll-behavior: smooth;
+        }
+        .chat-box::-webkit-scrollbar { width: 5px; }
+        .chat-box::-webkit-scrollbar-thumb { background: #ccc; border-radius: 5px; }
+
+        .message { margin: 12px 0; display: flex; animation: slideIn 0.25s ease-out; }
+        @keyframes slideIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+        .bot-message { justify-content: flex-start; }
+        .user-message { justify-content: flex-end; }
+
+        .message-content {
+            max-width: 75%; padding: 11px 15px;
+            border-radius: 18px; word-wrap: break-word; line-height: 1.5; font-size: 14px;
+        }
+        .bot-message  .message-content { background: #e0e0ff; color: #333; border-bottom-left-radius: 4px; }
+        .user-message .message-content { background: #667eea; color: white; border-bottom-right-radius: 4px; }
+
+        .session-date-header {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            background: rgba(0,0,0,0.05);
+            border-radius: 10px;
+            padding: 6px 12px;
+            margin: 8px auto;
+            display: inline-block;
+            width: 100%;
+        }
+
+        /* ── Input ── */
+        .input-container {
+            padding: 12px 14px;
+            background: white;
+            border-top: 1px solid #e8e8e8;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        #messageInput {
+            flex: 1; padding: 11px 16px;
+            border: 2px solid #e0e0e0; border-radius: 22px;
+            font-size: 14px; outline: none; transition: border-color 0.2s;
+        }
+        #messageInput:focus { border-color: #667eea; }
+        #sendBtn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none;
+            padding: 11px 22px; border-radius: 22px;
+            cursor: pointer; font-weight: bold; font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        #sendBtn:hover   { opacity: 0.88; }
+        #sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Typing indicator */
+        .typing-indicator { display: flex; gap: 5px; padding: 4px 0; }
+        .typing-indicator span {
+            width: 8px; height: 8px; background: #aaa;
+            border-radius: 50%; animation: bounce 1.2s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-7px); } }
+
+        /* ════════════════════════════════════
+           VIDEO FEED
+        ════════════════════════════════════ */
+        #video-container {
+            position: fixed;
+            top: 36px; right: 36px;
+            z-index: 1000;
+            transition: opacity 0.3s;
+        }
+        #video {
+            width: 230px; border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            border: 4px solid #fff;
+            background: #000;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        .close-cam-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.65); color: white;
+            border: none; width: 28px; height: 28px;
+            border-radius: 50%; font-size: 16px; cursor: pointer;
+        }
+
+        /* ════════════════════════════════════
+           WEEKLY SUMMARY MODAL
+        ════════════════════════════════════ */
+        #summaryModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+        .summary-card {
+            background: white;
+            border-radius: 20px;
+            width: 420px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 28px 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .summary-card h2 { font-size: 20px; margin-bottom: 16px; color: #333; }
+        .modal-close {
+            position: absolute; top: 16px; right: 16px;
+            background: #f0f0f0; border: none; border-radius: 50%;
+            width: 32px; height: 32px; font-size: 18px; cursor: pointer;
+        }
+        .summary-loading  { text-align: center; color: #888; padding: 30px 0; font-size: 15px; }
+        .summary-error    { text-align: center; color: #e74c3c; padding: 20px; }
+        .summary-empty    { text-align: center; color: #aaa; padding: 20px; line-height: 2; }
+        .summary-period   { font-size: 12px; color: #aaa; margin-bottom: 12px; }
+        .summary-conclusion {
+            padding: 14px 16px; background: #f8f8ff;
+            border-radius: 12px; margin-bottom: 18px;
+            font-size: 15px; line-height: 1.6; color: #333;
+        }
+        .summary-stats {
+            display: grid; grid-template-columns: repeat(4,1fr);
+            gap: 10px; margin-bottom: 18px;
+        }
+        .stat-card {
+            background: #f4f4fb; border-radius: 12px;
+            padding: 12px 6px; text-align: center;
+        }
+        .stat-number { font-size: 22px; font-weight: bold; }
+        .stat-label  { font-size: 11px; color: #888; margin-top: 3px; }
+
+        .summary-emotions { margin-bottom: 18px; font-size: 13px; color: #555; }
+        .emotion-pills    { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .emotion-pill {
+            background: #e8e8ff; color: #555;
+            padding: 3px 10px; border-radius: 20px; font-size: 12px;
+        }
+        .view-history-btn, .back-btn {
+            width: 100%; padding: 10px;
+            background: #667eea; color: white;
+            border: none; border-radius: 12px;
+            cursor: pointer; font-size: 14px; margin-top: 6px;
+        }
+        .back-btn { background: #aaa; }
+        .view-history-btn:hover { background: #5567d5; }
+        .back-btn:hover { background: #999; }
+
+        .report-card {
+            border: 1px solid #eee; border-radius: 12px;
+            padding: 12px 14px; margin-bottom: 10px;
+        }
+        .report-period   { font-size: 12px; color: #aaa; margin-bottom: 6px; }
+        .report-conclusion { font-size: 13px; color: #444; margin-bottom: 6px; line-height: 1.5; }
+        .report-meta     { font-size: 12px; color: #888; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     FLOATING BUBBLES
+════════════════════════════════════════ -->
+<div class="bg-bubbles">
+    <div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════ -->
+<div id="sidebar">
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    <div class="sidebar-header">
+        <h3>💬 Chat History</h3>
+        <button class="new-chat-btn"  onclick="startNewChat()">＋ New Chat</button>
+        <button class="weekly-btn"    onclick="showWeeklySummary(); closeSidebar()">📊 Weekly Summary</button>
+    </div>
+    <div id="sessionList"></div>
+</div>
+<div id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ═══════════════════════════════════════
+     MAIN CHAT
+════════════════════════════════════════ -->
+<div class="chat-container">
+
+    <!-- Header -->
+    <div class="chat-header">
+        <div class="header-top">
+            <button class="menu-btn" onclick="openSidebar()" title="Chat History">☰</button>
+            <div class="header-center">
+                <div class="avatar" id="avatar">🤖</div>
+                <div class="emotion-label" id="emotionLabel">Detecting your emotion...</div>
+            </div>
+            <!-- Clickable user badge → profile page -->
+            <a class="user-badge" href="/profile" title="Manage your profile">
+                👤 {{ username }}
+            </a>
+        </div>
+        <div class="header-bottom">
+            <div class="emotion-status">🎭 Face Detection Active</div>
+            <button class="header-btn" onclick="clearHistory()">🗑️ Clear</button>
+            <button class="header-btn" onclick="toggleCamera()">📹 Camera</button>
+            <button class="header-btn" onclick="showWeeklySummary()">📊 Summary</button>
+            <button class="header-btn" onclick="window.location.href='/logout'">🚪 Logout</button>
+        </div>
+    </div>
+
+    <!-- Chat box -->
+    <div class="chat-box" id="chatBox"></div>
+
+    <!-- Input -->
+    <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" />
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════
+     VIDEO FEED
+════════════════════════════════════════ -->
+<div id="video-container">
+    <video id="video" autoplay muted></video>
+    <button class="close-cam-btn" onclick="toggleCamera()">✕</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     WEEKLY SUMMARY MODAL
+════════════════════════════════════════ -->
+<div id="summaryModal">
+    <div class="summary-card">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <h2>📊 Weekly Emotion Report</h2>
+        <div id="summaryBody">
+            <div class="summary-loading">⏳ Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════ -->
+<script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script defer src="/static/js/face.js"></script>
+
+<script>
+    function toggleCamera() {
+        const c = document.getElementById('video-container');
+        if (!c) return;
+        c.style.opacity       = c.style.opacity === '0' ? '1' : '0';
+        c.style.pointerEvents = c.style.opacity === '0' ? 'none' : 'auto';
+    }
+    window.addEventListener('load', () => {
+        const c = document.getElementById('video-container');
+        c.style.opacity = '1'; c.style.pointerEvents = 'auto';
+    });
+
+    document.getElementById('summaryModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+</script>
+</body>
+</html>
