@@ -1,0 +1,29 @@
+from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+def anthropomorphic_response(emotion, message):
+    responses = {
+        "happy": "😊 You look happy! That’s wonderful. How can I help you today?",
+        "sad": "😔 I can sense that you’re feeling sad. I’m here for you.",
+        "angry": "😟 You seem upset. Let’s take a deep breath together.",
+        "surprised": "😲 Oh! Something unexpected happened?",
+        "neutral": "🙂 I’m here and ready to assist you."
+    }
+    return responses.get(emotion, responses["neutral"])
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json()
+    emotion = data.get("emotion", "neutral")
+    message = data.get("message", "")
+
+    reply = anthropomorphic_response(emotion, message)
+    return jsonify({"reply": reply})
+
+if __name__ == "__main__":
+    app.run(debug=True)
