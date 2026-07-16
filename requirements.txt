@@ -1,0 +1,26 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Bcrypt
+PyMySQL
+groq
+joblib
+torch
+transformers
+scikit-learn
+numpy
+Werkzeug
+
+Coding 
+python -m pip install Flask
+python -m pip install Flask-SQLAlchemy
+python -m pip install Flask-Login
+python -m pip install Flask-Bcrypt
+python -m pip install PyMySQL
+python -m pip install groq
+python -m pip install joblib
+python -m pip install torch
+python -m pip install transformers
+python -m pip install scikit-learn
+python -m pip install numpy
+python -m pip install Werkzeug
